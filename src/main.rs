@@ -1,17 +1,22 @@
 mod neutrino_board;
-use rand::prelude::*;
+mod agents;
+use crate::agents::agent::Agent;
+use crate::agents::minimax::{self, MinimaxAgent};
 use crate::neutrino_board::{GameBoard, Player};
+use crate::agents::random_agent::RandomAgent;
 
 fn main() {
-    let mut rng = rand::rng();
     let mut board: GameBoard = GameBoard::default();
     println!("{board}");
-
+    //let mut minimax_agent = MinimaxAgent::new(Player::Player1); //stack overflow
+    let mut random_agent = RandomAgent::default();
     let mut num_moves = 0usize;
+
     while !board.is_terminal() {
-        let possible_move = board.actions();
-        let random_move = possible_move.choose(&mut rng).unwrap();
-        board = board.result(random_move.clone());
+        
+        let agent_move = if num_moves % 2 == 0 {random_agent.get_move(&board)} else {random_agent.get_move(&board)};
+        
+        board = board.result(agent_move);
         num_moves += 1;
         if num_moves % 1 == 0 {
             println!("move {num_moves}");

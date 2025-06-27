@@ -15,7 +15,7 @@ pub enum Player {
     Player2,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TurnMove {
     neutrino_move: MoveType,
     piece_move: MoveType
@@ -33,7 +33,7 @@ impl Display for TurnMove {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct MoveType {
     from_position: Position,
     to_position: Position,
@@ -50,7 +50,7 @@ impl MoveType {
  * A position on the board, use board[row][column]
  *  */
  
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Position {
     row: usize,
     column: usize
