@@ -38,23 +38,27 @@ impl MonteCarloTreeSearch {
         let mut node = self.root.clone();
         let mut random_agent = RandomAgent::default();
         while !node.borrow().is_leaf() {
-            let action = random_agent.get_move(&node.borrow().board);
-            node = node.borrow().children.get(&action).unwrap().clone();
-            
-            //node = node.children.get_mut(&action).unwrap();
+            let action: TurnMove;
+            let child:RefCell<NodeType>;
+            {
+                action = random_agent.get_move(&node.borrow().board);
+                child = node.borrow().children.get(&action).unwrap().clone();
+            }
+            node = child
         }
         node
     }
-
+    
     fn expand(&mut self, node: &mut NodeType) {
         for action in &node.board.actions() {
             let new_board = node.board.result(action.clone());
-            let child = NodeType::new(new_board, Some(node));
-            node.children.insert(action.clone(), child);
+            let parent: Weak<NodeType> = Weak::from(value);
+            let child = NodeType::new(new_board, Some(parent));
+            node.children.insert(action.clone(), child.into());
         }
         todo!()
     }
-
+    /*
     fn simulate() -> Self {
         todo!()
     }
@@ -66,6 +70,7 @@ impl MonteCarloTreeSearch {
     fn ucb1(node: NodeType) {
         todo!()
     }
+    */
 
 }
 
