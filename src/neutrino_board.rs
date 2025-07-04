@@ -17,8 +17,8 @@ pub enum Player {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TurnMove {
-    neutrino_move: MoveType,
-    piece_move: MoveType
+    pub neutrino_move: MoveType,
+    pub piece_move: MoveType
 }
 
 impl TurnMove {
@@ -34,7 +34,7 @@ impl Display for TurnMove {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct MoveType {
+pub(crate) struct MoveType {
     from_position: Position,
     to_position: Position,
 }
