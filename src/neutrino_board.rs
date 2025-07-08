@@ -29,7 +29,7 @@ impl TurnMove {
 
 impl Display for TurnMove {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "({} -> {}) ({} -> {})", self.neutrino_move.from_position, self.neutrino_move.to_position, self.piece_move.from_position, self.piece_move.to_position)
+        writeln!(f, "({}) ({})", self.neutrino_move,  self.piece_move)
     }
 }
 
@@ -45,6 +45,11 @@ impl MoveType {
     }
 }
 
+impl Display for MoveType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{} -> {}", self.from_position, self.to_position)
+    }
+}
 
 /**
  * A position on the board, use board[row][column]
@@ -288,6 +293,8 @@ impl GameBoard {
         }
         false
     }
+
+
     
     /**
      * The utility (i.e. score) of the GameBoard from a given player's perspective.
@@ -296,7 +303,7 @@ impl GameBoard {
         if !self.is_terminal() {
             return None
         }
-
+        //TODO extract into winner()
         let neutrino_loss_player1 = self.board[0]
             .iter()
             .any(|x| x.is_some_and(|piece| piece == Piece::Neutrino));

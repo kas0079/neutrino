@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::stdin};
+use std::{collections::HashMap, io::{stdin, stdout, Write}};
 
 use crate::{agents::agent::Agent, neutrino_board::{GameBoard, MoveType, TurnMove}};
 
@@ -46,21 +46,25 @@ impl Agent for Human {
             let neutrino_moves: Vec<&MoveType> = actions.keys().collect();
 
             for (idx, neutrino) in neutrino_moves.iter().enumerate() {
-                println!("Neutrino Move {}: {:?}", idx, neutrino);
+                println!("Neutrino Move {}: {}", idx, neutrino);
             }
             user_selection.clear();
-            print!("Please select a Neutrino move");
-            
+            print!("Please select a Neutrino move ");
+            let _ = stdout().flush();
+
             stdin.read_line(&mut user_selection);
             //TODO continue on error
             let neutrino_move: &MoveType = neutrino_moves[user_selection.trim().parse::<usize>().unwrap()];
             let piece_moves: &Vec<TurnMove> = actions.get(neutrino_move).unwrap();
 
-            for (idx, turnMove) in piece_moves.iter().enumerate() {
-                println!("Move {}: {:?}", idx, turnMove);
+            for (idx, turn_move) in piece_moves.iter().enumerate() {
+                println!("Move {}: {}", idx, turn_move);
+                println!("{}", board.result(turn_move.clone()))
             }
             user_selection.clear();
-            print!("Please select the rest of the move");
+            print!("Please select the rest of the move ");
+            let _ = stdout().flush();
+
             stdin.read_line(&mut user_selection);
             let piece_move_index: usize = user_selection.trim().parse().unwrap();
             let parsed_move: TurnMove = piece_moves.get(piece_move_index).unwrap().clone();
