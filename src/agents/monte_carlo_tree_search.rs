@@ -1,4 +1,4 @@
-use std::{collections::HashMap, f64::consts::SQRT_2, time::{Duration, Instant}};
+use std::{collections::HashMap, f64::consts::SQRT_2, time::{Duration, Instant}, ops::{Index, IndexMut}};
 use rand::{rng, seq::IteratorRandom};
 
 use crate::{agents::{agent::Agent, random_agent::{self, RandomAgent}}, neutrino_board::{GameBoard, Player, TurnMove}};
@@ -6,7 +6,7 @@ use crate::{agents::{agent::Agent, random_agent::{self, RandomAgent}}, neutrino_
 type NodeIndex = usize;
 
 #[derive(Clone)]
-struct Node {
+pub struct Node {
     utility: usize,
     number_of_playouts: usize,
     board: GameBoard,
@@ -19,8 +19,8 @@ impl Node {
         Self { utility: 0, number_of_playouts: 0, board, children: HashMap::new(), parent }
     }
     
-    fn children_fully_populated(&self) -> bool {
-        self.board.actions().len() == self.children.len()
+    fn is_leaf(&self) -> bool {
+        self.board.actions().len() == self.children.len() /*|| self.board.is_terminal() */
     }
 }
 pub(crate) struct MonteCarloTreeSearch  {
@@ -40,25 +40,27 @@ impl MonteCarloTreeSearch {
      */
     fn select(&self) -> NodeIndex {
         let mut node = self.root;
-        let mut random_agent = RandomAgent::default();
-        if self.nodes[node].number_of_playouts == 0 {
+        if self[node].number_of_playouts == 0 {
             return node
         }
         
-        while self.nodes[node].children_fully_populated() {
+        while self[node].is_leaf() {
+            //TODO if node is terminal, return with a signal that it should not be expanded.
             //buggy
-            let actions = self.nodes[node].board.actions();
+            //println!("examining board: \n{}", self[node].board);
+            let actions = self[node].board.actions();
+            //assert!(!actions.is_empty(), "Trying to find actions from terminal state node:\n {}", self[node].board);
             //let action: TurnMove = random_agent.get_move(&self.nodes[node].board);
             let choosen_action = actions.into_iter().max_by(|x,y | {
-                let x_node = self.nodes[node].children.get(x).unwrap();
+                let x_node = self[node].children.get(x).unwrap();
                 let x_value = self.ucb1(*x_node);
-                let y_node = self.nodes[node].children.get(y).unwrap();
+                let y_node = self[node].children.get(y).unwrap();
                 let y_value = self.ucb1(*y_node);
-                println!("comparing {} with {}", x_value, y_value);
+                //println!("comparing {} with {}", x_value, y_value);
                 x_value.total_cmp(&y_value)
             }).expect("There should be a move here!");
 
-            let child = self.nodes[node].children.get(&choosen_action).unwrap();
+            let child = self[node].children.get(&choosen_action).unwrap();
             node = *child
         }
         node
@@ -88,13 +90,16 @@ impl MonteCarloTreeSearch {
     /// Simulates moves until a winner is found, with random_agent as playout policy, returns the utility from the POV of the player at the root node.
     fn simulate(&self, node_index: NodeIndex) -> f64 {
         let root_player = self.nodes[self.root].board.to_move();
-        let mut game_board = self.nodes[node_index].board.clone();
-        let mut random_agent = RandomAgent::default();
-        while !game_board.is_terminal() {
-            let random_move = random_agent.get_move(&game_board);
-            game_board = game_board.result(random_move);
+        let game_board = self.nodes[node_index].board.clone();
+        //playout policy
+        let terminal_state = game_board.actions().into_iter().find(|action| game_board.result(action.clone().clone()).is_terminal());
+        match terminal_state {
+            Some(action) => {
+                let terminal_game_board = game_board.result(action);
+                terminal_game_board.utility(root_player).unwrap()
+            },
+            None => Self::random_playout(game_board, root_player)
         }
-        game_board.utility(root_player).expect("Game board should be in a terminal state.")
     }
 
     
@@ -114,7 +119,7 @@ impl MonteCarloTreeSearch {
         }
         for (_, node) in self.nodes.iter_mut()
             .enumerate()
-            .filter(|(index, node)| path_to_root.contains(index)) {
+            .filter(|(index, _node)| path_to_root.contains(index)) {
                 node.number_of_playouts += 1;
                 if winner_is_root && node.board.to_move() == root_player {
                     node.utility += 1
@@ -123,7 +128,16 @@ impl MonteCarloTreeSearch {
                 }
         }
     }
-    
+
+    fn random_playout(mut game_board: GameBoard, root_player: Player) -> f64 {
+        let mut random_agent = RandomAgent::default();
+        while !game_board.is_terminal() {
+            let random_move = random_agent.get_move(&game_board);
+            game_board = game_board.result(random_move);
+        }
+        game_board.utility(root_player).expect("Game board should be in a terminal state.")
+    }
+
     fn ucb1(&self, node_index: NodeIndex) -> f64 {
         let node = &self.nodes[node_index];
         let exploration_constant = SQRT_2;
@@ -133,6 +147,20 @@ impl MonteCarloTreeSearch {
     }
     
 
+}
+
+impl IndexMut<usize> for MonteCarloTreeSearch {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.nodes[index]
+    }
+}
+
+impl Index<usize> for MonteCarloTreeSearch {
+    type Output = Node;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.nodes[index]
+    }
 }
 
 impl Agent for MonteCarloTreeSearch {

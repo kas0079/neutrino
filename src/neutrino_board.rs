@@ -154,8 +154,12 @@ impl GameBoard {
      * A list of all possible moves.
      */
     pub fn actions(&self) -> Vec<TurnMove>{
+        //if the game has a winner, don't allow more moves (the case of captured neutrino is handled below)
+        if self.neutrino_in_end_row() {
+            return vec![]
+        }
         //list neutrino moves
-        
+
         let move_in_direction = |board: &GameBoard, start_position: Position, direction: Box<dyn Fn(Position) -> Position>| -> Option<MoveType>{
             let test_position = direction(Position::new(1,1));
             let moves_down = test_position.row == 0;
@@ -285,13 +289,17 @@ impl GameBoard {
      * Whether the GameBoard is terminal (has a winner). 
      */
     pub fn is_terminal(&self) -> bool {
-        if self.neutrino_position.row == 0 || self.neutrino_position.row == 4 {
+        if self.neutrino_in_end_row() {
             return true
         }
         if self.actions().len() == 0 {
             return true
         }
         false
+    }
+
+    fn neutrino_in_end_row(&self) -> bool {
+       self.neutrino_position.row == 0 || self.neutrino_position.row == 4
     }
 
 

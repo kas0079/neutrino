@@ -52,7 +52,7 @@ impl Agent for Human {
             print!("Please select a Neutrino move ");
             let _ = stdout().flush();
 
-            stdin.read_line(&mut user_selection);
+            let _ = stdin.read_line(&mut user_selection);
             //TODO continue on error
             let neutrino_move: &MoveType = neutrino_moves[user_selection.trim().parse::<usize>().unwrap()];
             let piece_moves: &Vec<TurnMove> = actions.get(neutrino_move).unwrap();
@@ -65,7 +65,7 @@ impl Agent for Human {
             print!("Please select the rest of the move ");
             let _ = stdout().flush();
 
-            stdin.read_line(&mut user_selection);
+            let _ = stdin.read_line(&mut user_selection);
             let piece_move_index: usize = user_selection.trim().parse().unwrap();
             let parsed_move: TurnMove = piece_moves.get(piece_move_index).unwrap().clone();
             action = Some(parsed_move)
