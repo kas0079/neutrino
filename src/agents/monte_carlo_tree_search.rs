@@ -23,9 +23,15 @@ impl Node {
         self.board.actions().len() == self.children.len() /*|| self.board.is_terminal() */
     }
 }
+
+enum SelectionResult {
+    NonTerminal(NodeIndex),
+    Terminal(NodeIndex, f64)
+
+}
 pub(crate) struct MonteCarloTreeSearch  {
     nodes: Vec<Node>,
-    root: usize,
+    root: NodeIndex,
     time_out: Duration
 }
 
@@ -35,35 +41,43 @@ impl MonteCarloTreeSearch {
         Self { nodes: vec![root], root: 0, time_out }
     }
     
+    fn root_player(&self) -> Player {
+        self.nodes[self.root].board.to_move()
+    }
     /**
      * Select a node to expand.
      */
-    fn select(&self) -> NodeIndex {
-        let mut node = self.root;
-        if self[node].number_of_playouts == 0 {
-            return node
+    fn select(&self) -> SelectionResult {
+        let mut node_index = self.root;
+        if self[node_index].number_of_playouts == 0 {
+            return SelectionResult::NonTerminal(node_index)
         }
         
-        while self[node].is_leaf() {
-            //TODO if node is terminal, return with a signal that it should not be expanded.
+        while self[node_index].is_leaf() {
+            //if node is terminal, return it should not be expanded.
+            let node = &self[node_index];
+            if node.board.is_terminal() {
+                let result = node.board.utility(self.root_player()).expect("We should have a winner here");
+                return SelectionResult::Terminal(node_index, result);
+            }
             //buggy
-            //println!("examining board: \n{}", self[node].board);
-            let actions = self[node].board.actions();
-            //assert!(!actions.is_empty(), "Trying to find actions from terminal state node:\n {}", self[node].board);
+            
+            let actions = node.board.actions();
+            assert!(!actions.is_empty(), "Trying to find actions from terminal state node:\n {}", self[node_index].board);
             //let action: TurnMove = random_agent.get_move(&self.nodes[node].board);
             let choosen_action = actions.into_iter().max_by(|x,y | {
-                let x_node = self[node].children.get(x).unwrap();
+                let x_node = node.children.get(x).unwrap();
                 let x_value = self.ucb1(*x_node);
-                let y_node = self[node].children.get(y).unwrap();
+                let y_node = node.children.get(y).unwrap();
                 let y_value = self.ucb1(*y_node);
                 //println!("comparing {} with {}", x_value, y_value);
                 x_value.total_cmp(&y_value)
             }).expect("There should be a move here!");
 
-            let child = self[node].children.get(&choosen_action).unwrap();
-            node = *child
+            let child = node.children.get(&choosen_action).unwrap();
+            node_index = *child
         }
-        node
+        SelectionResult::NonTerminal(node_index)
     }
 
     /**
@@ -89,7 +103,7 @@ impl MonteCarloTreeSearch {
 
     /// Simulates moves until a winner is found, with random_agent as playout policy, returns the utility from the POV of the player at the root node.
     fn simulate(&self, node_index: NodeIndex) -> f64 {
-        let root_player = self.nodes[self.root].board.to_move();
+        let root_player = self.root_player();
         let game_board = self.nodes[node_index].board.clone();
         //playout policy
         let terminal_state = game_board.actions().into_iter().find(|action| game_board.result(action.clone().clone()).is_terminal());
@@ -167,10 +181,15 @@ impl Agent for MonteCarloTreeSearch {
     fn get_move(&mut self, board: &GameBoard) -> TurnMove {
         let start_time = Instant::now();
         while start_time.elapsed() < self.time_out {
-            let selected_node = self.select();
-            let expanded_node = self.expand(selected_node);
-            let result = self.simulate(expanded_node);
-            self.back_propagate(expanded_node, result);
+            match self.select() {
+                SelectionResult::NonTerminal(selected_node) => {
+                    let expanded_node = self.expand(selected_node);
+                    let result = self.simulate(expanded_node);
+                    self.back_propagate(expanded_node, result);
+                },
+                SelectionResult::Terminal(expanded_node, result) => self.back_propagate(expanded_node, result),
+            }
+            
         };
         
         let action = self.nodes[self.root].children
